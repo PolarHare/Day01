@@ -19,9 +19,23 @@ public class DrawerThread extends Thread {
     private final static int THREAD_COUNT = 2 * Runtime.getRuntime().availableProcessors();
     private final static int FIELD_UPDATER_COUNT = THREAD_COUNT - 1;
 
-    private final static int WIDTH = 240;
-    private final static int HEIGHT = 320;
+    //Default:     240 x 320
+    //Xperia Sola: 480 x 854
+    //Galaxy S3:   720 x 1280
+    private final static int WIDTH = HelloAndroidActivity.getScreenWidth();
+    private final static int HEIGHT = HelloAndroidActivity.getScreenHeight();
+
     private final static int COLOUR_COUNT = 15;
+
+    private static final int UPDATE_FPS_AFTER_MS = 500;
+    private static final int MS_IN_SECOND = 1000;
+    private static final Paint BLACK_TEXT = new Paint();
+
+    private static final float TEXT_SIZE = 30f;
+    private static final int TEXT_ALPHA = 255;
+
+    private static final int TEXT_OFFSET_X = 15;
+    private static final int TEXT_OFFSET_Y = 35;
 
     private final static Random random = new Random();
 
@@ -135,13 +149,6 @@ public class DrawerThread extends Thread {
     private long frameStart = System.currentTimeMillis();
     private long frames;
 
-    private static final int UPDATE_FPS_AFTER_MS = 500;
-    private static final int MS_IN_SECOND = 1000;
-    private static final Paint BLACK_TEXT = new Paint();
-
-    private static final float TEXT_SIZE = 15f;
-    private static final int TEXT_ALPHA = 200;
-
     static {
         BLACK_TEXT.setARGB(TEXT_ALPHA, 0, 0, 0);
         BLACK_TEXT.setTextSize(TEXT_SIZE);
@@ -158,7 +165,7 @@ public class DrawerThread extends Thread {
             frameStart = System.currentTimeMillis();
             frames = 0;
         }
-        canvas.drawText(fps + " FPS", 15, 25, BLACK_TEXT);
+        canvas.drawText(fps + " FPS", TEXT_OFFSET_X, TEXT_OFFSET_Y, BLACK_TEXT);
         profiler.out(WhirlViewFunctions.renderFieldBitmap);
     }
 

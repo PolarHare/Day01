@@ -55,7 +55,7 @@ public class FieldUpdater implements Runnable {
 
     @Override
     public void run() {
-        updateField4(fromY, toY, cornerCases);
+        updateField5(fromY, toY, cornerCases);
         counter.countDown();
         if (profiler.isToLogNextStep()) {
             Log.d(this.getClass().getName(), profiler.getAverangeLog());
@@ -101,49 +101,110 @@ public class FieldUpdater implements Runnable {
             }
         }
         if (cornerCases) {
-            for (int y : cornerY) {
-                int index = width * y;
-                for (int x = 0; x < width; x++) {
-                    boolean hasNeib = false;
-                    for (int k = 0; k < dIndex.length; k++) {
-                        int neib = ((x + dx[k] + width) % width) + ((y + dy[k] + height) % height) * width;
-                        if (field[neib] == fieldNext[index]) {
-                            tmp[index] = fieldNext[index];
-                            tmpNext[index] = fieldNext[neib];
-                            hasNeib = true;
-                            break;
-                        }
-                    }
-                    if (!hasNeib) {
+            calculateCornerCases();
+        }
+        swapFields();
+        profiler.out(FieldUpdaterThreadFunctions.updateField4);
+    }
+
+    private void updateField5(int fromY, int toY, boolean cornerCases) {
+        profiler.in(FieldUpdaterThreadFunctions.updateField5);
+        {
+            fromY = Math.max(fromY, cornerY[0] + 1);
+            toY = Math.min(toY, cornerY[1]);
+            int index = width * fromY + 1;
+            for (int y = fromY; y < toY; ++y) {
+                for (int x = 1; x < width - 1; ++x) {
+                    //-width - 1, -width, -width + 1, width - 1, width, width + 1, -1, 1
+                    if (field[index - width - 1] == fieldNext[index]) {
+                        tmp[index] = fieldNext[index];
+                        tmpNext[index] = fieldNext[index - width - 1];
+
+                    } else if (field[index - width] == fieldNext[index]) {
+                        tmp[index] = fieldNext[index];
+                        tmpNext[index] = fieldNext[index - width];
+
+                    } else if (field[index - width + 1] == fieldNext[index]) {
+                        tmp[index] = fieldNext[index];
+                        tmpNext[index] = fieldNext[index - width + 1];
+
+                    } else if (field[index + width - 1] == fieldNext[index]) {
+                        tmp[index] = fieldNext[index];
+                        tmpNext[index] = fieldNext[index + width - 1];
+
+                    } else if (field[index + width] == fieldNext[index]) {
+                        tmp[index] = fieldNext[index];
+                        tmpNext[index] = fieldNext[index + width];
+
+                    } else if (field[index + width + 1] == fieldNext[index]) {
+                        tmp[index] = fieldNext[index];
+                        tmpNext[index] = fieldNext[index + width + 1];
+
+                    } else if (field[index - 1] == fieldNext[index]) {
+                        tmp[index] = fieldNext[index];
+                        tmpNext[index] = fieldNext[index - 1];
+
+                    } else if (field[index + 1] == fieldNext[index]) {
+                        tmp[index] = fieldNext[index];
+                        tmpNext[index] = fieldNext[index + 1];
+                    } else {
                         tmp[index] = field[index];
                         tmpNext[index] = fieldNext[index];
                     }
                     ++index;
                 }
-            }
-            for (int x : cornerX) {
-                int index = x;
-                for (int y = 0; y < height; y++) {
-                    boolean hasNeib = false;
-                    for (int k = 0; k < dIndex.length; k++) {
-                        int neib = ((x + dx[k] + width) % width) + ((y + dy[k] + height) % height) * width;
-                        if (field[neib] == fieldNext[index]) {
-                            tmp[index] = fieldNext[index];
-                            tmpNext[index] = fieldNext[neib];
-                            hasNeib = true;
-                            break;
-                        }
-                    }
-                    if (!hasNeib) {
-                        tmp[index] = field[index];
-                        tmpNext[index] = fieldNext[index];
-                    }
-                    index += width;
-                }
+                ++index;
+                ++index;
             }
         }
+        if (cornerCases) {
+            calculateCornerCases();
+        }
         swapFields();
-        profiler.out(FieldUpdaterThreadFunctions.updateField4);
+        profiler.out(FieldUpdaterThreadFunctions.updateField5);
+    }
+
+    private void calculateCornerCases() {
+        for (int y : cornerY) {
+            int index = width * y;
+            for (int x = 0; x < width; x++) {
+                boolean hasNeib = false;
+                for (int k = 0; k < dIndex.length; k++) {
+                    int neib = ((x + dx[k] + width) % width) + ((y + dy[k] + height) % height) * width;
+                    if (field[neib] == fieldNext[index]) {
+                        tmp[index] = fieldNext[index];
+                        tmpNext[index] = fieldNext[neib];
+                        hasNeib = true;
+                        break;
+                    }
+                }
+                if (!hasNeib) {
+                    tmp[index] = field[index];
+                    tmpNext[index] = fieldNext[index];
+                }
+                ++index;
+            }
+        }
+        for (int x : cornerX) {
+            int index = x;
+            for (int y = 0; y < height; y++) {
+                boolean hasNeib = false;
+                for (int k = 0; k < dIndex.length; k++) {
+                    int neib = ((x + dx[k] + width) % width) + ((y + dy[k] + height) % height) * width;
+                    if (field[neib] == fieldNext[index]) {
+                        tmp[index] = fieldNext[index];
+                        tmpNext[index] = fieldNext[neib];
+                        hasNeib = true;
+                        break;
+                    }
+                }
+                if (!hasNeib) {
+                    tmp[index] = field[index];
+                    tmpNext[index] = fieldNext[index];
+                }
+                index += width;
+            }
+        }
     }
 
     private void swapFields() {
@@ -156,7 +217,7 @@ public class FieldUpdater implements Runnable {
     }
 
     private enum FieldUpdaterThreadFunctions {
-        updateField4
+        updateField5, updateField4
     }
 
 }
