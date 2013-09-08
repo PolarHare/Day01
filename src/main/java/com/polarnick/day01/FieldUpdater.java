@@ -57,7 +57,9 @@ public class FieldUpdater implements Runnable {
     public void run() {
         updateField4(fromY, toY, cornerCases);
         counter.countDown();
-        Log.d(this.getClass().getName(), profiler.getAverangeLog());
+        if (profiler.isToLogNextStep()) {
+            Log.d(this.getClass().getName(), profiler.getAverangeLog());
+        }
     }
 
     private void updateField4(int fromY, int toY, boolean cornerCases) {
@@ -72,29 +74,29 @@ public class FieldUpdater implements Runnable {
             }
             for (int y = fromY; y < toY; ++y) {
                 for (int x = 1; x < width - 1; ++x) {
-                    boolean hasNeib = false;
+                    boolean notChanged = true;
                     for (int ind : inds) {
                         if (field[ind] == fieldNext[index]) {
                             tmp[index] = fieldNext[index];
                             tmpNext[index] = fieldNext[ind];
-                            hasNeib = true;
+                            notChanged = false;
                             break;
                         }
                     }
-                    if (!hasNeib) {
+                    if (notChanged) {
                         tmp[index] = field[index];
                         tmpNext[index] = fieldNext[index];
                     }
                     ++index;
                     for (int k = 0; k < inds.length; k++) {
-                        inds[k]++;
+                        ++inds[k];
                     }
                 }
-                for (int i = 0; i < 2; i++) {
-                    ++index;
-                    for (int k = 0; k < inds.length; k++) {
-                        inds[k]++;
-                    }
+                ++index;
+                ++index;
+                for (int k = 0; k < inds.length; k++) {
+                    ++inds[k];
+                    ++inds[k];
                 }
             }
         }

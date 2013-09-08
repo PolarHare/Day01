@@ -85,7 +85,9 @@ public class DrawerThread extends Thread {
                     surfaceHolder.unlockCanvasAndPost(canvas);
                 }
             }
-            Log.d(this.getClass().getName(), profiler.getAverangeLog());
+            if (profiler.isToLogNextStep()) {
+                Log.d(this.getClass().getName(), profiler.getAverangeLog());
+            }
             sleepNano(1);
         }
     }
@@ -137,9 +139,12 @@ public class DrawerThread extends Thread {
     private static final int MS_IN_SECOND = 1000;
     private static final Paint BLACK_TEXT = new Paint();
 
+    private static final float TEXT_SIZE = 15f;
+    private static final int TEXT_ALPHA = 200;
+
     static {
-        BLACK_TEXT.setARGB(100, 0, 0, 0);
-        BLACK_TEXT.setTextSize(15f);
+        BLACK_TEXT.setARGB(TEXT_ALPHA, 0, 0, 0);
+        BLACK_TEXT.setTextSize(TEXT_SIZE);
     }
 
     private void renderFieldBitmap(Canvas canvas) {

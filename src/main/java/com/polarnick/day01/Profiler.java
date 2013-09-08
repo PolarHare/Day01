@@ -8,6 +8,7 @@ public class Profiler<T extends Enum<T>> {
 
     private final static boolean PERFORM_IN_OUT_NAME_CHECKS = true;
     private final static long MIN_TIME_OF_PROFILING = 0;
+    private final static int LOG_STEPS_PERIOD = 128;
 
     private final Map<T, Long> maxTimeForMethod;
     private final Map<T, Long> minTimeForMethod;
@@ -18,6 +19,8 @@ public class Profiler<T extends Enum<T>> {
     private final Stack<T> nameIn;
 
     private final String className;
+
+    private int step = 0;
 
     public Profiler(Class clazz, String name) {
         this(clazz.getName() + "(" + name + ")");
@@ -114,6 +117,11 @@ public class Profiler<T extends Enum<T>> {
                     "while not left function \"" + generateName(function) + "." + last + "\"! " +
                     "It seems, that this profiler used from different threads!");
         }
+    }
+
+    public boolean isToLogNextStep() {
+        step = (step + 1) % LOG_STEPS_PERIOD;
+        return step == 0;
     }
 
     public String getAverangeLog() {
