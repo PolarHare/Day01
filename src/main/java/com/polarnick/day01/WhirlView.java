@@ -38,6 +38,4 @@ class WhirlView extends SurfaceView implements SurfaceHolder.Callback {
         }
     }
 
-
-
 }

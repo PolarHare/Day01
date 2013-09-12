@@ -25,9 +25,9 @@ public class DrawerThread extends Thread {
     private final static int WIDTH = HelloAndroidActivity.getScreenWidth();
     private final static int HEIGHT = HelloAndroidActivity.getScreenHeight();
 
-    private final static int COLOUR_COUNT = 15;
+    private final static int COLOUR_COUNT = 16;
 
-    private static final int UPDATE_FPS_AFTER_MS = 500;
+    private static final int UPDATE_FPS_AFTER_MS = 239;
     private static final int MS_IN_SECOND = 1000;
     private static final Paint BLACK_TEXT = new Paint();
 
@@ -43,7 +43,9 @@ public class DrawerThread extends Thread {
     private final Profiler<WhirlViewFunctions> profiler = new Profiler<WhirlViewFunctions>(this.getClass());
 
     private final ExecutorService pool = Executors.newFixedThreadPool(THREAD_COUNT);
-    private final List<FieldUpdater> updaters = new ArrayList<FieldUpdater>(FIELD_UPDATER_COUNT);
+    private final List<FieldPeriodUpdater> updaters = new ArrayList<FieldPeriodUpdater>(FIELD_UPDATER_COUNT);
+
+    private final PeriodHolder periodHolder = new PeriodHolder(COLOUR_COUNT, WIDTH, HEIGHT);
 
     private int[] field = new int[WIDTH * HEIGHT];
     private int[] tmp = new int[WIDTH * HEIGHT];
@@ -60,8 +62,8 @@ public class DrawerThread extends Thread {
     private void initFieldUpdaters() {
         boolean cornersWas = false;
         for (int i = 0; i < FIELD_UPDATER_COUNT; i++) {
-            updaters.add(new FieldUpdater(i, (i * HEIGHT / FIELD_UPDATER_COUNT), ((i + 1) * HEIGHT / FIELD_UPDATER_COUNT),
-                    !cornersWas, WIDTH, HEIGHT, field, tmp, fieldNext, tmpNext));
+            updaters.add(new FieldPeriodUpdater(i, (i * HEIGHT / FIELD_UPDATER_COUNT), ((i + 1) * HEIGHT / FIELD_UPDATER_COUNT),
+                    !cornersWas, periodHolder, WIDTH, HEIGHT, field, tmp, fieldNext, tmpNext));
             if (!cornersWas) {
                 cornersWas = true;
             }
@@ -86,13 +88,14 @@ public class DrawerThread extends Thread {
 
     @Override
     public void run() {
-        Canvas canvas;
         while (runFlag) {
-            canvas = null;
+            Canvas canvas = null;
             try {
                 canvas = surfaceHolder.lockCanvas(null);
                 synchronized (surfaceHolder) {
-                    onDraw(canvas);
+                    if (canvas != null) {
+                        onDraw(canvas);
+                    }
                 }
             } finally {
                 if (canvas != null) {
@@ -112,9 +115,39 @@ public class DrawerThread extends Thread {
 
     public void onDraw(final Canvas canvas) {
         profiler.in(WhirlViewFunctions.onDraw);
-        final CountDownLatch counter = new CountDownLatch(THREAD_COUNT);
+        if (periodHolder.getState() == PeriodHolder.State.NOT_IN_PERIOD) {
+            update(canvas);
+            periodHolder.updateState();
+        } else if (periodHolder.getState() == PeriodHolder.State.PERIOD_CALCULATES) {
+            tmp = periodHolder.getNextToRender();
+            for (FieldPeriodUpdater updater : updaters) {
+                updater.setNewFieldWriteAt(periodHolder.getNextToRender());
+            }
+            update(canvas);
+            periodHolder.updateState();
+            if (periodHolder.getState() == PeriodHolder.State.PERIOD_CALCULATED) {
+                freeMemory();
+            }
+        } else if (periodHolder.getState() == PeriodHolder.State.PERIOD_CALCULATED) {
+            renderFieldBitmap(periodHolder.getCurFrame(), canvas);
+            periodHolder.updateState();
+        }
+        profiler.out(WhirlViewFunctions.onDraw);
+    }
 
-        for (FieldUpdater updater : updaters) {
+    private void freeMemory() {
+        updaters.clear();
+        field = null;
+        fieldNext = null;
+        tmp = null;
+        tmpNext = null;
+        Runtime.getRuntime().gc();
+    }
+
+    private void update(final Canvas canvas) {
+        final CountDownLatch counter = new CountDownLatch(THREAD_COUNT);
+        periodHolder.setStillPeriodStarted(true);
+        for (FieldPeriodUpdater updater : updaters) {
             updater.setCounter(counter);
             pool.execute(updater);
         }
@@ -122,7 +155,7 @@ public class DrawerThread extends Thread {
         pool.execute(new Runnable() {
             @Override
             public void run() {
-                renderFieldBitmap(canvas);
+                renderFieldBitmap(field, canvas);
                 counter.countDown();
             }
         });
@@ -133,7 +166,6 @@ public class DrawerThread extends Thread {
             e.printStackTrace();
         }
         swapFields();
-        profiler.out(WhirlViewFunctions.onDraw);
     }
 
     private void sleepNano(int time) {
@@ -154,10 +186,10 @@ public class DrawerThread extends Thread {
         BLACK_TEXT.setTextSize(TEXT_SIZE);
     }
 
-    private void renderFieldBitmap(Canvas canvas) {
+    private void renderFieldBitmap(int[] colors, Canvas canvas) {
         profiler.in(WhirlViewFunctions.renderFieldBitmap);
         canvas.scale(1f * HelloAndroidActivity.getScreenWidth() / WIDTH, 1f * HelloAndroidActivity.getScreenHeight() / HEIGHT);
-        canvas.drawBitmap(field, 0, WIDTH, 0, 0, WIDTH, HEIGHT, false, null);
+        canvas.drawBitmap(colors, 0, WIDTH, 0, 0, WIDTH, HEIGHT, false, null);
         final long delta = System.currentTimeMillis() - frameStart;
         frames++;
         if (delta > UPDATE_FPS_AFTER_MS) {
